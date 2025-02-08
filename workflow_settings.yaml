@@ -1,0 +1,5 @@
+dataformCoreVersion: 3.0.13
+defaultProject: genz_fashions
+defaultLocation: us-central1
+defaultDataset: dataform
+defaultAssertionDataset: dataform_assertions
