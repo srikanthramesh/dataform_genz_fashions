@@ -4,29 +4,36 @@
  * Install Node JS
   
   ## Initilise dataform
-  ```dataform init . PROJECT_NAME DEFAULT_LOCATION
+  ```
+  dataform init . PROJECT_NAME DEFAULT_LOCATION
   ```
   
   ## Get bigquery credentials
-  ```dataform init-creds
+  ```
+  dataform init-creds
   ```
 
   ## Create node modules
-  ```dataform install
+  ```
+  dataform install
   ```
 
   ## Compile project
-  ```dataform compile
+  ```
+  dataform compile
   ```
 
   ## Compile with runtime variables
-  ```dataform compile --vars=SAMPLE_VAR=SAMPLE_VALUE,foo=bar
+  ```
+  dataform compile --vars=SAMPLE_VAR=SAMPLE_VALUE,foo=bar
   ```
 
   ## Run whole project
-  ```dataform run --vars=SAMPLE_VAR=SAMPLE_VALUE,sampleVar2=sampleValue2
+  ```
+  dataform run --vars=SAMPLE_VAR=SAMPLE_VALUE,sampleVar2=sampleValue2
   ```
 
   ## Run full refresh
-  ```dataform run --full-refresh
+  ```
+  dataform run --full-refresh
   ```
