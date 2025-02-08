@@ -1,0 +1,108 @@
+config {
+  type: "incremental",
+  schema: "silver",
+  name: "employee",
+  tags: "hourly",
+  disabled: false,
+  description: "Stores employee info",
+  uniqueKey: ["id", "sys_eff_from_ts"]
+}
+
+with source_cte as (
+  
+  SELECT 
+    id,
+    name, age, height, is_student, join_date, score, favcolour,
+    createdAt, 
+    updatedAt, 
+    TIMESTAMP_TRUNC(updatedAt,second) as sys_eff_from_ts,
+    current_timestamp() as sys_insert_ts,
+    current_timestamp() as sys_update_ts
+  FROM bronze.employee
+
+), 
+
+target_cte as (
+  select 
+    id,
+    name, age, height, is_student, join_date, score, favcolour
+    attributes,
+    createdAt, 
+    updatedAt,  
+    sys_eff_from_ts,
+    sys_insert_ts,
+    current_timestamp() as sys_update_ts
+  from silver.employee
+  where sys_current_flag = true
+),
+
+join_cte as (
+  select 
+    s.*, 
+    -- Mark this row from source
+    false as tmp_target_row_flag 
+  from source_cte as s
+  left join target_cte as t using (id)
+  -- Ignore late arrival
+  where s.sys_eff_from_ts > coalesce(t.sys_eff_from_ts, '2000-01-01 00:00:00')
+
+  union all 
+
+  select 
+    t.*, 
+    -- Mark this row from target
+    true as tmp_target_row_flag 
+  from target_cte t
+  where exists (
+    select * 
+    from source_cte as s 
+    -- Get matching records from target to compare
+    where s.id=t.id --TODO
+  )
+),
+
+cleaned_cte as (
+  select *
+  from join_cte
+  qualify 
+    -- Keep the current record from target
+    -- or keep records from source that have different attributes
+    tmp_target_row_flag
+    --TODO ignore rows when no changes 
+    or to_json_string(attributes) != to_json_string(
+      lag(attributes) over (
+        partition by id
+        order by sys_eff_from_ts
+      )
+    )
+),
+
+calc_cte as (
+  select 
+    *,
+    coalesce(
+      timestamp_sub(
+        lead(sys_eff_from_ts) over (
+          partition by id
+          order by sys_eff_from_ts
+        ), 
+        interval 1 SECOND
+      ),
+      '2099-12-31 23:59:59'
+    ) as sys_eff_to_ts,
+    if(
+      row_number() over (
+        partition by id
+        order by sys_eff_from_ts desc
+      ) = 1,
+      true,
+      false
+    ) as sys_current_flag
+  from cleaned_cte
+)
+
+select * except (tmp_target_row_flag) 
+from calc_cte
+-- If there is no new change, means that the record is from target and it's the current one,
+-- we don't want to update this record in target table
+where NOT (tmp_target_row_flag and sys_eff_to_ts = '2099-12-31 23:59:59')
