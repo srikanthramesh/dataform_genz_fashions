@@ -2,38 +2,31 @@
 
 * [Dataform installation](https://cloud.google.com/dataform/docs/use-dataform-cli)
  * Install Node JS
-  ```
-  initilise dataform
-  ```
-  dataform init . PROJECT_NAME DEFAULT_LOCATION
+  
+  ## Initilise dataform
+  ```dataform init . PROJECT_NAME DEFAULT_LOCATION
   ```
   
-  Get bigquery credentials
-  ```
-  dataform init-creds
-  ```
-
-  Create node modules
-  ```
-  dataform install
+  ## Get bigquery credentials
+  ```dataform init-creds
   ```
 
-  Compile project
-  ```
-  dataform compile
-  ```
-
-  Compile with runtime variables
-  ```
-  dataform compile --vars=SAMPLE_VAR=SAMPLE_VALUE,foo=bar
+  ## Create node modules
+  ```dataform install
   ```
 
-  Run whole project
-  ```
-  dataform run --vars=SAMPLE_VAR=SAMPLE_VALUE,sampleVar2=sampleValue2
+  ## Compile project
+  ```dataform compile
   ```
 
-  Run full refresh
+  ## Compile with runtime variables
+  ```dataform compile --vars=SAMPLE_VAR=SAMPLE_VALUE,foo=bar
   ```
-  dataform run --full-refresh
+
+  ## Run whole project
+  ```dataform run --vars=SAMPLE_VAR=SAMPLE_VALUE,sampleVar2=sampleValue2
+  ```
+
+  ## Run full refresh
+  ```dataform run --full-refresh
   ```
