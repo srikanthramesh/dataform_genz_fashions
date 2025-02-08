@@ -1,0 +1,17 @@
+config {
+  type: "incremental",
+  schema: "silver",
+  name: "sample_data",
+  tags: "hourly",
+  disabled: false,
+  description: "stores sample data info"
+}
+ 
+ 
+  SELECT 
+    integer_col,
+    float_col, string_col, boolean_col, date_col, datetime_col, time_col, null_col, list_col, dict_col, set_col, complex_col, binary_col, currency_col, percentage_col, zipcode_col, phone_number_col, email_col, url_col, uuid_col, latitude_col, longitude_col, ip_address_col, hex_col, rgb_color_col, text_col, json_col, xml_col, yaml_col, html_col, path_col, filename_col, csv_col, tsv_col, binary_data_col, boolean_str_col, mixed_type_col, currency_format_col, iso_date_col, iso_time_col, emoji_col, slug_col, hash_col, enum_col, file_size_col, duration_col, timestamp_col, big_integer_col, scientific_notation_col, custom_object_col
+    createdAt, 
+    current_timestamp() as sys_insert_ts,
+    current_timestamp() as sys_update_ts
+  FROM bronze.sample_data
