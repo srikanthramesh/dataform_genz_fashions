@@ -1,0 +1,71 @@
+config {
+  type: "incremental",
+  schema: "datamind_silver",
+  name: "attendance",
+  tags: ["hourly"],
+  disabled: false,
+  description: "Stores employees attendance",
+  bigquery: {
+        
+  }
+}
+ 
+ with base as (
+  SELECT `id` as id,
+`leave` as leave,
+`login_time` as loginTime,
+`dwell_hours` as dwellHours,
+  _file_name gcs_file_name,
+  parse_timestamp('%Y%m%d%H%M%S', regexp_extract(_FILE_NAME, r'(\d{14})')) source_ts,
+  FROM datamind_bronze.attendance
+  --WHERE updatedAt >= watermarkTs
+ )
+
+SELECT 
+  id Integer,
+leave Boolean,
+loginTime String,
+dwellHours Numeric,
+  createdAt, 
+  current_timestamp() as sys_insert_ts,
+  current_timestamp() as sys_update_ts
+FROM base
+WHERE source_ts > watermarkTs
+
+pre_operations {
+
+DECLARE watermarkTs DEFAULT (
+        ${when(incremental(),
+        `select coalesce(max(source_ts), timestamp('2001-01-01')) from ${self()}`,
+        `select timestamp('2001-01-01')`)}
+    );   
+
+CREATE EXTERNAL TABLE IF NOT EXISTS datamind_bronze.attendance
+(
+`id` Integer,
+`leave` Boolean,
+`login_time` String,
+`dwell_hours` Numeric
+)
+OPTIONS (
+  format = 'csv',
+  uris = ['gs://smart-landing-dev/attendance/employee_(\\d{14}).csv'],  -- Replace with your GCS URI(s)
+  ignore_unknown_values=TRUE,
+  skip_leading_rows = 1
+);
+
+CREATE TABLE IF NOT EXISTS ${self()} 
+(
+  id Integer,
+leave Boolean,
+loginTime String,
+dwellHours Numeric, 
+  gcs_file_name string,
+  source_ts timestamp,
+  sys_insert_ts timestamp,
+  sys_update_ts timestamp
+)
+OPTIONS(
+    description="Stores employees attendance"
+); 
+}
