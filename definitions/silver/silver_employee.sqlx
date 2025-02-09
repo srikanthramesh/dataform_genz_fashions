@@ -1,0 +1,206 @@
+config {
+  type: "incremental",
+  schema: "datamind_silver",
+  name: "employee",
+  tags: ["hourly"],
+  disabled: false,
+  description: "Stores employee info",
+  uniqueKey: ["ID", "sys_eff_from_ts"],
+  bigquery: {
+        partitionBy: "joinDate"
+  }
+}
+
+-- SCD2
+with source_cte as (
+  with base as (
+    SELECT
+      `ID` as ID,
+`Name` as Name,
+`Age` as Age,
+`Height` as Height,
+`Is_Student` as isStudent,
+PARSE_DATE('%Y-%m-%d', join_date) as joinDate,
+`Score` as Score,
+`favColour` as favColour,
+PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', updatedAt) as updatedAt,
+      _file_name gcs_file_name,
+      parse_timestamp('%Y%m%d%H%M%S', regexp_extract(_FILE_NAME, r'(\d{14})')) source_ts
+    FROM datamind_bronze.employee
+  )
+  
+  SELECT 
+    ID,
+    Name,
+Age,
+Height,
+isStudent,
+joinDate,
+Score,
+favColour,
+updatedAt,
+    gcs_file_name,
+    source_ts,
+    TIMESTAMP_TRUNC(updatedAt,second) as sys_eff_from_ts,
+    current_timestamp() as sys_insert_ts,
+    current_timestamp() as sys_update_ts,
+    SHA256(array_to_string([Name,
+Age,
+Height,
+isStudent,
+joinDate,
+Score,
+favColour,
+updatedAt], '|','')) tmp_hash_diff
+    from base
+    WHERE source_ts >= watermarkTs
+), 
+
+target_cte as (
+  select 
+    ID,
+    Name,
+Age,
+Height,
+isStudent,
+joinDate,
+Score,
+favColour,
+updatedAt,
+    gcs_file_name,
+    source_ts,
+    sys_eff_from_ts,
+    sys_insert_ts,
+    current_timestamp() as sys_update_ts,
+    sha256(array_to_string([Name,
+Age,
+Height,
+isStudent,
+joinDate,
+Score,
+favColour,
+updatedAt], '|','')) tmp_hash_diff
+  from ${self()} 
+  where sys_current_flag = true
+),
+
+join_cte as (
+  select 
+    s.*, 
+    -- Mark this row from source
+    false as tmp_target_row_flag 
+  from source_cte as s
+  left join target_cte as t using (ID)
+  -- Ignore late arrival
+  where s.sys_eff_from_ts > coalesce(t.sys_eff_from_ts, '2000-01-01 00:00:00')
+
+  union all 
+
+  select 
+    t.*, 
+    -- Mark this row from target
+    true as tmp_target_row_flag 
+  from target_cte t
+  where exists (
+    select * 
+    from source_cte as s 
+    -- Get matching records from target to compare
+    where s.ID=t.ID
+  )
+),
+
+cleaned_cte as (
+  select * 
+  from join_cte
+  qualify 
+    -- Keep the current record from target
+    -- or keep records from source that have different attributes
+    tmp_target_row_flag
+    --ignore rows when no changes 
+    or tmp_hash_diff != lag(tmp_hash_diff) over (partition by ID order by sys_eff_from_ts)
+),
+
+calc_cte as (
+  select 
+    *,
+    coalesce(
+      timestamp_sub(
+        lead(sys_eff_from_ts) over (
+          partition by ID
+          order by sys_eff_from_ts
+        ), 
+        interval 1 SECOND
+      ),
+      '2099-12-31 23:59:59'
+    ) as sys_eff_to_ts,
+    if(
+      row_number() over (
+        partition by ID
+        order by sys_eff_from_ts desc
+      ) = 1,
+      true,
+      false
+    ) as sys_current_flag
+  from cleaned_cte
+)
+
+select * except (tmp_target_row_flag, tmp_hash_diff) 
+from calc_cte
+-- If there is no new change, means that the record is from target and it's the current one,
+-- we don't want to update this record in target table
+where NOT (tmp_target_row_flag and sys_eff_to_ts = '2099-12-31 23:59:59')
+
+
+pre_operations {
+
+DECLARE watermarkTs DEFAULT (
+    ${when(incremental(),
+    `select coalesce(max(source_ts), timestamp('2001-01-01')) from ${self()}`,
+    `select timestamp('2001-01-01')`)}
+);    
+
+CREATE EXTERNAL TABLE IF NOT EXISTS datamind_bronze.employee(
+`ID` Int64,
+`Name` String,
+`Age` Int64,
+`Height` Float64,
+`Is_Student` Boolean,
+`Join_Date` STRING,
+`Score` Float64,
+`favColour` String,
+`updatedAt` STRING
+)
+OPTIONS (
+  format = 'csv',
+  uris = ['gs://smart-landing-dev/employee/attendance_(\\d{14}).csv'],  -- Replace with your GCS URI(s)
+  ignore_unknown_values=TRUE,
+  skip_leading_rows = 1
+);
+
+
+CREATE TABLE IF NOT EXISTS ${self()} 
+(
+  ID Int64,
+Name String,
+Age Int64,
+Height Float64,
+isStudent Boolean,
+joinDate Date,
+Score Float64,
+favColour String,
+updatedAt Timestamp, 
+  gcs_file_name string,
+  source_ts timestamp,
+  sys_eff_from_ts timestamp,
+  sys_eff_to_ts timestamp,
+  sys_current_flag boolean,
+  sys_insert_ts timestamp,
+  sys_update_ts timestamp
+)
+OPTIONS(
+    description="Stores employee info"
+);
+
+
+
+}
