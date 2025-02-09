@@ -112,12 +112,12 @@ join_cte as (
 cleaned_cte as (
   select * 
   from join_cte
-  qualify 
+  where  
     -- Keep the current record from target
     -- or keep records from source that have different attributes
     tmp_target_row_flag
     --ignore rows when no changes 
-    /* or tmp_hash_diff != lag(tmp_hash_diff) over (partition by ID order by sys_eff_from_ts) */
+    /* qualify or tmp_hash_diff != lag(tmp_hash_diff) over (partition by ID order by sys_eff_from_ts) */
 ),
 
 calc_cte as (
