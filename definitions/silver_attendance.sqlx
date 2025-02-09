@@ -1,0 +1,31 @@
+config {
+  type: "incremental",
+  schema: "silver",
+  name: "attendance",
+  tags: "hourly",
+  disabled: false,
+  description: "Stores employees attendance"
+}
+ 
+ with base as (
+  SELECT `id` as id,`leave` as leave,`login_time` as loginTime,`dwell_hours` as dwellHours,
+  FROM bronze.attendance
+  --WHERE updatedAt >= watermarkTs
+ )
+
+SELECT 
+  ,
+  id, leave, loginTime, dwellHours
+  createdAt, 
+  current_timestamp() as sys_insert_ts,
+  current_timestamp() as sys_update_ts
+FROM base
+
+
+pre_operations {
+  DECLARE watermarkTs DEFAULT (
+        ${WHEN(incremental(),
+        `select coalesce(max(sys_insert_ts), timestamp('2001-01-01')) from ${self()}`,
+        `select timestamp('2001-01-01')`)}
+    );
+}
