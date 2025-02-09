@@ -172,7 +172,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS datamind_bronze.employee(
 )
 OPTIONS (
   format = 'csv',
-  uris = ['gs://smart-landing-dev/employee/attendance_(\\d{14}).csv'],  -- Replace with your GCS URI(s)
+  uris = ['gs://smart-landing-dev/employee/employee_(\\d{14}).csv'],  -- Replace with your GCS URI(s)
   ignore_unknown_values=TRUE,
   skip_leading_rows = 1
 );
