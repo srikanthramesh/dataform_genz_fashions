@@ -7,7 +7,7 @@ config {
   description: "Stores employee info",
   uniqueKey: ["ID", "sys_eff_from_ts"],
   bigquery: {
-        partitionBy: "joinDate"
+        
   }
 }
 
@@ -20,10 +20,10 @@ with source_cte as (
 `Age` as Age,
 `Height` as Height,
 `Is_Student` as isStudent,
-PARSE_DATE('%Y-%m-%d', join_date) as joinDate,
+parse_date("%Y-%m-%d",join_date) as joinDate,
 `Score` as Score,
 `favColour` as favColour,
-PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', updatedAt) as updatedAt,
+parse_timestamp("%Y-%m-%d %H:%M%:S",updatedAt) as updatedAt,
       _file_name gcs_file_name,
       parse_timestamp('%Y%m%d%H%M%S', regexp_extract(_FILE_NAME, r'(\d{14})')) source_ts
     FROM datamind_bronze.employee
@@ -109,16 +109,16 @@ join_cte as (
   )
 ),
 
-cleaned_cte as (
-  select * 
-  from join_cte
-  qualify 
-    -- Keep the current record from target
-    -- or keep records from source that have different attributes
-    tmp_target_row_flag
-    --ignore rows when no changes 
-    /* or tmp_hash_diff != lag(tmp_hash_diff) over (partition by ID order by sys_eff_from_ts) */
-),
+-- cleaned_cte as (
+--   select * 
+--   from join_cte
+--   where  
+--     -- Keep the current record from target
+--     -- or keep records from source that have different attributes
+--     tmp_target_row_flag
+--     --ignore rows when no changes 
+--     /* qualify or tmp_hash_diff != lag(tmp_hash_diff) over (partition by ID order by sys_eff_from_ts) */
+-- ),
 
 calc_cte as (
   select 
@@ -141,7 +141,7 @@ calc_cte as (
       true,
       false
     ) as sys_current_flag
-  from cleaned_cte
+  from join_cte
 )
 
 select * except (tmp_target_row_flag) --, tmp_hash_diff) 
@@ -172,7 +172,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS datamind_bronze.employee(
 )
 OPTIONS (
   format = 'csv',
-  uris = ['gs://smart-landing-dev/employee/employee_(\\d{14}).csv'],  -- Replace with your GCS URI(s)
+  uris = ['gs://smart-landing-dev/employee_*.csv'],  -- Replace with your GCS URI(s)
   ignore_unknown_values=TRUE,
   skip_leading_rows = 1
 );
