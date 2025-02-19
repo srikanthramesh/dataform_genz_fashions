@@ -57,6 +57,8 @@ updatedAt], '|','')) tmp_hash_diff */
 ), 
 
 target_cte as (
+  ${when(incremental(), 
+  ` 
   select 
     ID,
     Name,
@@ -81,7 +83,9 @@ Score,
 favColour,
 updatedAt], '|','')) tmp_hash_diff */ 
   from ${self()} 
-  where sys_current_flag = true
+  where sys_current_flag = true`,
+  `select * from source_cte where false`
+  )}
 ),
 
 join_cte as (
@@ -176,31 +180,5 @@ OPTIONS (
   ignore_unknown_values=TRUE,
   skip_leading_rows = 1
 );
-
-
-CREATE TABLE IF NOT EXISTS ${self()} 
-(
-  ID Int64,
-Name String,
-Age Int64,
-Height Float64,
-isStudent Boolean,
-joinDate Date,
-Score Float64,
-favColour String,
-updatedAt Timestamp, 
-  gcs_file_name string,
-  source_ts timestamp,
-  sys_eff_from_ts timestamp,
-  sys_eff_to_ts timestamp,
-  sys_current_flag boolean,
-  sys_insert_ts timestamp,
-  sys_update_ts timestamp
-)
-OPTIONS(
-    description="Stores employee info"
-);
-
-
 
 }

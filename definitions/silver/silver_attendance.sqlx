@@ -55,18 +55,4 @@ OPTIONS (
   skip_leading_rows = 1
 );
 
-CREATE TABLE IF NOT EXISTS ${self()} 
-(
-  id Int64,
-leave Boolean,
-loginTime String,
-dwellHours Float64, 
-  gcs_file_name string,
-  source_ts timestamp,
-  sys_insert_ts timestamp,
-  sys_update_ts timestamp
-)
-OPTIONS(
-    description="Stores employees attendance"
-); 
 }
