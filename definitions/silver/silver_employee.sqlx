@@ -23,7 +23,7 @@ with source_cte as (
 parse_date("%Y-%m-%d",join_date) as joinDate,
 `Score` as Score,
 `favColour` as favColour,
-parse_timestamp("%Y-%m-%d %H:%M:%S",updatedAt) as updatedAt,
+parse_timestamp("%Y-%m-%d %H:%M:%:S",updatedAt) as updatedAt,
       _file_name gcs_file_name,
       parse_timestamp('%Y%m%d%H%M%S', regexp_extract(_FILE_NAME, r'(\d{14})')) source_ts
     FROM datamind_bronze.employee
